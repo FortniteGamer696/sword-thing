@@ -248,7 +248,9 @@ task.spawn(
         while task.wait() do
             if orbstoggle then
                 for i, v in pairs(game:GetService("Workspace").Live.Pickups:GetChildren()) do
-                    v.CFrame = char.HumanoidRootPart.CFrame
+                    if v:IsA("Part") and char:FindFirstChild("HumanoidRootPart") then
+                    v.CFrame = char:WaitForChild("HumanoidRootPart").CFrame
+                    end
                 end
             end
         end
