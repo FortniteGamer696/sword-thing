@@ -32,10 +32,15 @@ local mobs
 local farmtoggle
 local _Distance = -7
 local egg
+local teleportmode = true
+local KillAuraRange = 50
+local equipbestdelay = 5
 
 local _speed = 100
 
-function tp(...)
+function tp(mode,...)
+    if char:FindFirstChild("HumanoidRootPart") then else repeat wait(.1) until char:FindFirstChild("HumanoidRootPart") end
+    if mode == nil then mode = true end
     local plr = game.Players.LocalPlayer
     local args = {...}
     if typeof(args[1]) == "number" and args[2] and args[3] then
@@ -52,9 +57,37 @@ function tp(...)
         TweenInfo.new(dist / _speed, Enum.EasingStyle.Linear),
         {CFrame = CFrame.new(args)}
     )
-
+    if mode == true then
     tween:Play()
     tween.Completed:Wait()
+    else
+    char:WaitForChild("HumanoidRootPart").CFrame = CFrame.new(args)
+    end
+end
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local function GetClosest(Range)
+    local Character = LocalPlayer.Character
+    local HumanoidRootPart = Character and Character:FindFirstChild("HumanoidRootPart")
+    if not (Character or HumanoidRootPart) then return end
+
+    local TargetDistance = Range
+    local Target
+
+    for i,v in ipairs(game:GetService("Workspace").Live.NPCs.Client:GetChildren()) do
+        if v:FindFirstChild("HumanoidRootPart") and v.HumanoidRootPart:FindFirstChild("NPCTag") then
+            local TargetHRP = v.HumanoidRootPart
+            local mag = (HumanoidRootPart.Position - TargetHRP.Position).magnitude
+            if mag < TargetDistance then
+                TargetDistance = mag
+                Target = v.Name
+            end
+        end
+    end
+
+    return Target
 end
 
 local Tab =
@@ -119,6 +152,16 @@ Section:Slider(
     }
 )
 
+Section:Toggle(
+    {
+        Text = "tween tp",
+        Default = teleportmode,
+        Callback = function(bool)
+            teleportmode = bool
+        end
+    }
+)
+
 Section:Slider(
     {
         Text = "Speed",
@@ -163,6 +206,57 @@ Section3:Toggle(
         Text = "Claim all chests",
         Callback = function(bool)
             claimchestall = bool
+        end
+    }
+)
+
+Section3:Toggle(
+    {
+        Text = "Kill aura",
+        Callback = function(bool)
+            Killaura = bool
+        end
+    }
+)
+
+Section3:Slider(
+    {
+        Text = "Kill aura range",
+        Default = 50,
+        Minimum = 10,
+        Maximum = 100,
+        Callback = function(val)
+            KillAuraRange = val
+        end
+    }
+)
+
+Section3:Toggle(
+    {
+        Text = "Forge all weapons",
+        Callback = function(bool)
+            forgetrue = bool
+        end
+    }
+)
+
+Section3:Toggle(
+    {
+        Text = "Equip Best weapon",
+        Callback = function(bool)
+            equipbest = bool
+        end
+    }
+)
+
+Section3:Slider(
+    {
+        Text = "Equip best delay",
+        Default = equipbestdelay,
+        Minimum = 1,
+        Maximum = 50,
+        Callback = function(val)
+            equipbestdelay = val
         end
     }
 )
@@ -228,12 +322,12 @@ task.spawn(
                 for i, v in pairs(game:GetService("Workspace").Live.NPCs.Client:GetChildren()) do
                     if v:FindFirstChild("HumanoidRootPart") and v.HumanoidRootPart:FindFirstChild("NPCTag") and v:FindFirstChild("HumanoidRootPart").NPCTag.NameLabel.Text == mobs and farmtoggle == true then
                         repeat
-                            tp(v.HumanoidRootPart.CFrame * Vector3.new(0, _Distance, 0))
+                            tp(teleportmode, v.HumanoidRootPart.CFrame * Vector3.new(0, _Distance, 0))
                             game:GetService("ReplicatedStorage").Packages.Knit.Services.ClickService.RF.Click:InvokeServer(v.Name)
                         until not v.HumanoidRootPart:FindFirstChild("NPCTag") or farmtoggle == false
                     elseif mobs == "All" and v:FindFirstChild("HumanoidRootPart") and v.HumanoidRootPart:FindFirstChild("NPCTag") and farmtoggle == true then
                         repeat
-                            tp(v.HumanoidRootPart.CFrame * Vector3.new(0, _Distance, 0))
+                            tp(teleportmode, v.HumanoidRootPart.CFrame * Vector3.new(0, _Distance, 0))
                             game:GetService("ReplicatedStorage").Packages.Knit.Services.ClickService.RF.Click:InvokeServer(v.Name)
                         until not v.HumanoidRootPart:FindFirstChild("NPCTag") or farmtoggle == false
                     end
@@ -248,8 +342,20 @@ task.spawn(
         while task.wait() do
             if orbstoggle then
                 for i, v in pairs(game:GetService("Workspace").Live.Pickups:GetChildren()) do
-                    if v:IsA("Part") and char:FindFirstChild("HumanoidRootPart") then
-                    v.CFrame = char:WaitForChild("HumanoidRootPart").CFrame
+                    v.CFrame = char.HumanoidRootPart.CFrame
+                end
+            end
+        end
+    end
+)
+
+task.spawn(
+    function()
+        while task.wait() do
+            if Killaura then
+                for i,v in ipairs(game:GetService("Workspace").Live.NPCs.Client:GetChildren()) do
+                    if v.Name == GetClosest(KillAuraRange) and v:FindFirstChild("HumanoidRootPart") and v.HumanoidRootPart:FindFirstChild("NPCTag") and Killaura == true then
+                        game:GetService("ReplicatedStorage").Packages.Knit.Services.ClickService.RF.Click:InvokeServer(v.Name)
                     end
                 end
             end
@@ -262,6 +368,30 @@ task.spawn(
         while task.wait() do
             if eggtrue then
                 game:GetService("ReplicatedStorage").Packages.Knit.Services.EggService.RF.BuyEgg:InvokeServer({["eggName"] = egg, ["auto"] = true, ["amount"] = 1})
+            end
+        end
+    end
+)
+
+
+task.spawn(
+    function()
+        while task.wait() do
+            if forgetrue then
+                for i,v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.WeaponInv.Background.ImageFrame.Window.WeaponHolder.WeaponScrolling:GetChildren()) do
+                           game:GetService("ReplicatedStorage").Packages.Knit.Services.ForgeService.RF.Forge:InvokeServer(v.Name)
+                end
+            end
+        end
+    end
+)
+
+task.spawn(
+    function()
+        while task.wait() do
+            if equipbest then
+                wait(equipbestdelay)
+             game:GetService("ReplicatedStorage").Packages.Knit.Services.WeaponInvService.RF.EquipBest:InvokeServer()
             end
         end
     end
